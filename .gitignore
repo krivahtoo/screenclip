@@ -1,2 +1,5 @@
 build/**
 !.gitkeep
+screenclip.kdev4
+.kdev4
+dist/**

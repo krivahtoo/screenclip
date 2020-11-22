@@ -1,6 +1,7 @@
 #include "screenclip.h"
 
 #include <QtWidgets>
+#include <QtCore>
 
 Screenclip::Screenclip()
     :  screenshotLabel(new QLabel(this))
@@ -99,26 +100,36 @@ void Screenclip::newScreenshot()
 
 void Screenclip::saveScreenshot()
 {
+    QDateTime currentTime = QDateTime::currentDateTime();
+    const QString dateFormat = "yyyyMMdd_hhmmss";
+    QString name = currentTime.toString(dateFormat);
     const QString format = "png";
     QString initialPath = QStandardPaths::writableLocation(QStandardPaths::PicturesLocation);
     if (initialPath.isEmpty())
         initialPath = QDir::currentPath();
-    initialPath += tr("/untitled.") + format;
+    initialPath += "/Screenshot_"+ name + "." + format;
+    
+    QString fileName;
+    
+    if (!autoSave->isChecked()) {
+        QFileDialog fileDialog(this, tr("Save As"), initialPath);
+        fileDialog.setAcceptMode(QFileDialog::AcceptSave);
+        fileDialog.setFileMode(QFileDialog::AnyFile);
+        fileDialog.setDirectory(initialPath);
+        QStringList mimeTypes;
+        const QList<QByteArray> baMimeTypes = QImageWriter::supportedMimeTypes();
+        for (const QByteArray &bf : baMimeTypes)
+            mimeTypes.append(QLatin1String(bf));
+        fileDialog.setMimeTypeFilters(mimeTypes);
+        fileDialog.selectMimeTypeFilter("image/" + format);
+        fileDialog.setDefaultSuffix(format);
+        if (fileDialog.exec() != QDialog::Accepted)
+            return;
+        fileName = fileDialog.selectedFiles().first();
+    } else {
+        fileName = initialPath;
+    }
 
-    QFileDialog fileDialog(this, tr("Save As"), initialPath);
-    fileDialog.setAcceptMode(QFileDialog::AcceptSave);
-    fileDialog.setFileMode(QFileDialog::AnyFile);
-    fileDialog.setDirectory(initialPath);
-    QStringList mimeTypes;
-    const QList<QByteArray> baMimeTypes = QImageWriter::supportedMimeTypes();
-    for (const QByteArray &bf : baMimeTypes)
-        mimeTypes.append(QLatin1String(bf));
-    fileDialog.setMimeTypeFilters(mimeTypes);
-    fileDialog.selectMimeTypeFilter("image/" + format);
-    fileDialog.setDefaultSuffix(format);
-    if (fileDialog.exec() != QDialog::Accepted)
-        return;
-    const QString fileName = fileDialog.selectedFiles().first();
     if (!originalPixmap.save(fileName)) {
         QMessageBox::warning(this, tr("Save Error"), tr("The image could not be saved to \"%1\".")
                              .arg(QDir::toNativeSeparators(fileName)));
@@ -192,6 +203,9 @@ void Screenclip::createActions()
 
     restoreAction = new QAction(tr("&Restore"), this);
     connect(restoreAction, &QAction::triggered, this, &QWidget::showNormal);
+    
+    autoSave = new QAction(tr("Auto Save"), this);
+    autoSave->setCheckable(true);
 
     quitAction = new QAction(tr("&Quit"), this);
     connect(quitAction, &QAction::triggered, qApp, &QCoreApplication::quit);
@@ -206,6 +220,8 @@ void Screenclip::createTrayIcon()
     trayIconMenu->addAction(minimizeAction);
     trayIconMenu->addAction(maximizeAction);
     trayIconMenu->addAction(restoreAction);
+    trayIconMenu->addSeparator();
+    trayIconMenu->addAction(autoSave);
     trayIconMenu->addSeparator();
     trayIconMenu->addAction(quitAction);
 

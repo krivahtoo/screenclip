@@ -55,6 +55,7 @@ private:
     QAction *restoreAction;
     QAction *saveAction;
     QAction *quitAction;
+    QAction *autoSave;
 
     QSystemTrayIcon *trayIcon;
     QMenu *trayIconMenu;
